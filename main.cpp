@@ -94,7 +94,7 @@ public:
         atoms.wmClientMachine = getAtom("WM_CLIENT_MACHINE");
         if(atoms.netActiveWindow == 0)
         {
-            std::cerr<<"WM_CLIENT_MACHINE is required\n";
+            std::cerr<<"  is required\n";
             return false;
         }
         
@@ -176,6 +176,10 @@ public:
     bool operator==(const Process& in)
     {
         return pid == in.pid;
+    }
+    bool operator!=(const Process& in)
+    {
+        return pid != in.pid;
     }
     Process(){}
     Process(pid_t pidIn)
@@ -266,17 +270,20 @@ int main(int argc, char* argv[])
                 pid_t windowPid = xinstance.getPid(wid);
                 Process process(windowPid);
                 
-                for(size_t i = 0; i < applicationNames.size(); ++i)
+                if(process != prevProcess)
                 {
-                    if(process.name == applicationNames[i] && process.name != "" && wid != 0) 
+                    for(size_t i = 0; i < applicationNames.size(); ++i)
                     {
-                        kill(process.pid, SIGCONT);
-                        std::cout<<"Resumeing: "<<wid<<" pid: "<<process.pid<<" name: "<<process.name<<'\n';
-                    }
-                    else if(prevProcess.name == applicationNames[i] && prevWindow != 0 && process.name != "" && wid != 0) 
-                    {
-                        kill(prevProcess.pid, SIGSTOP);
-                        std::cout<<"Stoping: "<<prevWindow<<" pid: "<<prevProcess.pid<<" name: "<<prevProcess.name<<'\n';
+                        if(process.name == applicationNames[i] && process.name != "" && wid != 0) 
+                        {
+                            kill(process.pid, SIGCONT);
+                            std::cout<<"Resumeing: "<<wid<<" pid: "<<process.pid<<" name: "<<process.name<<'\n';
+                        }
+                        else if(prevProcess.name == applicationNames[i] && prevWindow != 0 && prevProcess.name != "") 
+                        {
+                            kill(prevProcess.pid, SIGSTOP);
+                            std::cout<<"Stoping: "<<prevWindow<<" pid: "<<prevProcess.pid<<" name: "<<prevProcess.name<<'\n';
+                        }
                     }
                 }
                 prevProcess = process;
