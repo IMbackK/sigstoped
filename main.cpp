@@ -268,15 +268,15 @@ int main(int argc, char* argv[])
                 
                 for(size_t i = 0; i < applicationNames.size(); ++i)
                 {
-                    if(process.name == applicationNames[i]) 
+                    if(process.name == applicationNames[i] && process.name != "" && wid != 0) 
                     {
                         kill(process.pid, SIGCONT);
-                        std::cout<<"Resumeing: "<<wid<<" pid: "<<windowPid<<" name: "<<Process(windowPid).name<<'\n';
+                        std::cout<<"Resumeing: "<<wid<<" pid: "<<process.pid<<" name: "<<process.name<<'\n';
                     }
-                    else if(prevProcess.name == applicationNames[i] && prevWindow != 0) kill(prevProcess.pid, SIGSTOP);
+                    else if(prevProcess.name == applicationNames[i] && prevWindow != 0 && process.name != "" && wid != 0) 
                     {
                         kill(prevProcess.pid, SIGSTOP);
-                        std::cout<<"Stoping: "<<wid<<" pid: "<<windowPid<<" name: "<<Process(windowPid).name<<'\n';
+                        std::cout<<"Stoping: "<<prevWindow<<" pid: "<<prevProcess.pid<<" name: "<<prevProcess.name<<'\n';
                     }
                 }
                 prevProcess = process;
