@@ -8,7 +8,7 @@ set(LIBS -lX11)
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
-target_link_libraries( ${PROJECT_NAME} ${LIBS})
+target_link_libraries( ${PROJECT_NAME} ${LIBS} -lstdc++fs)
 target_include_directories(${PROJECT_NAME} PRIVATE  "/usr/include/glib-2.0/" "/usr/lib/glib-2.0/include" "/usr/include/gdk-pixbuf-2.0")
 add_definitions(" -std=c++17 -Wall -O2 -flto -fno-strict-aliasing")
 
