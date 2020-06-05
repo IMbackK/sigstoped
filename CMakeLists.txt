@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.4)
 
 project(sigstoped)
 
-set(SRC_FILES main.cpp )
+set(SRC_FILES main.cpp process.cpp xinstance.cpp)
 set(LIBS -lX11)
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
