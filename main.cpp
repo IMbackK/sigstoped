@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
                                 prevProcess.name != "" && 
                                 prevProcess.pid > 0) 
                         {
-                            sleep(0.5); //give the process some time to close its other windows
+                            sleep(5); //give the process some time to close its other windows
                             bool hasTopLevelWindow = false;
                             std::vector<Window> tlWindows = xinstance.getTopLevelWindows();
                             for(auto& window : tlWindows) 
