@@ -26,6 +26,8 @@ XInstance xinstance;
 volatile bool stop = false;
 volatile bool configStale = false;
 
+constexpr char configPrefix[] = "/.config/sigstoped/";
+
 void sigTerm(int dummy) 
 {
     stop = true;
@@ -43,51 +45,90 @@ void sigUser1(int dummy)
     configStale = true;
 }
 
-std::vector<std::string> getBlacklist()
+
+std::string getConfdir()
 {
     const char* homeDir = getenv("HOME");
     if(homeDir == nullptr) 
     {
         std::cerr<<"HOME enviroment variable must be set.\n";
+        return std::string();
+    }
+    const std::string configDir(std::string(homeDir)+configPrefix);
+    if (std::filesystem::exists(configDir)) 
+    {
+        return std::string(homeDir)+configPrefix;
+    }
+    else if(!std::filesystem::create_directory(configDir, homeDir))
+    {
+        std::cout<<"Can't create "<<configDir<<'\n';
+        return std::string();
+    }
+    else return std::string(homeDir)+configPrefix;
+}
+
+std::vector<std::string> getApplicationlist(const std::string& fileName)
+{
+    std::fstream blacklistFile;
+    blacklistFile.open(fileName, std::fstream::in);
+    std::string blacklistString;
+    if(!blacklistFile.is_open())
+    {
+        std::cout<<fileName+" dose not exist\n";
+        blacklistFile.open(fileName, std::fstream::out);
+        if(blacklistFile.is_open()) blacklistFile.close();
+        else  
+        {
+            std::cout<<"Can't create "<<fileName<<'\n';
+            return std::vector<std::string>();
+        }
     }
     else
     {
-        const std::string configDir(std::string(homeDir)+"/.config/sigstoped/");
-        std::fstream blacklistFile;
-        blacklistFile.open(configDir+"blacklist", std::fstream::in);
-        std::string blacklistString;
-        if(!blacklistFile.is_open())
+        blacklistString.assign((std::istreambuf_iterator<char>(blacklistFile)),
+                            std::istreambuf_iterator<char>());
+    }
+    return split(blacklistString);
+}
+
+bool createPidFile(const std::string& fileName)
+{
+    if(std::filesystem::exists(fileName))
+    {
+        std::cerr<<fileName<<" pid file exsists, only one instance may run at once\n";
+        return false;
+    }
+    else
+    {
+        std::fstream pidFile;
+        pidFile.open(fileName, std::fstream::out);
+        if(!pidFile.is_open())
         {
-            std::cout<<configDir+"blacklist dose not exist\n";
-            
-            if(!std::filesystem::create_directory(configDir, homeDir))
-            {
-                std::cout<<"Can't create "<<configDir<<'\n';
-            }
-            else
-            {
-                blacklistFile.open(configDir+"blacklist", std::fstream::out);
-                if(blacklistFile.is_open()) blacklistFile.close();
-                else  std::cout<<"Can't create "<<configDir<<"blacklist \n";
-            }
+            std::cerr<<"Can not create "<<fileName<<std::endl;
+            return false;
         }
         else
         {
-            blacklistString.assign((std::istreambuf_iterator<char>(blacklistFile)),
-                                std::istreambuf_iterator<char>());
+            pidFile<<getpid();
+            pidFile.close();
+            return true;
         }
-        return split(blacklistString);
     }
-    return std::vector<std::string>();
 }
 
 int main(int argc, char* argv[])
 {
-    std::vector<std::string> applicationNames = getBlacklist();
+ 
+    std::string confDir = getConfdir();
+    if(confDir.size() == 0) return 1;
+    
+    createPidFile(confDir+"pidfile");
+    
+    std::vector<std::string> applicationNames = getApplicationlist(confDir+"blacklist");
+    
     if(applicationNames.size() == 0) std::cout<<"WARNIG: no application names configured.\n";
     
-    struct stat sb;
-    if( stat("/proc/version", &sb) != 0)
+    if( !std::filesystem::exists("/proc") )
     {
         std::cerr<<"proc must be mounted!\n";
         return 1;
@@ -100,7 +141,7 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-    std::list<pid_t> stoppedPids;
+    std::list<Process> stoppedProcs;
     
     if(!xinstance.open(xDisplayName)) exit(1);
     
@@ -129,48 +170,44 @@ int main(int argc, char* argv[])
             {
                 pid_t windowPid = xinstance.getPid(wid);
                 Process process(windowPid);
-                std::cout<<"Active window: "<<wid<<" pid: "<<process.pid<<" name: "<<process.name<<'\n';
+                std::cout<<"Active window: "<<wid<<" pid: "<<process.getPid()<<" name: "<<process.getName()<<'\n';
                 
                 if(process != prevProcess)
                 {
                     if(configStale)
                     {
-                        applicationNames = getBlacklist();
+                        applicationNames = getApplicationlist(confDir+"blacklist");
                         configStale = false;
-                        for(auto& pid : stoppedPids) 
-                        {
-                            kill(pid, SIGCONT);
-                            debug("Resumeing pid: "+std::to_string(pid));
-                        }
-                        stoppedPids.clear();
+                        for(auto& process : stoppedProcs) process.resume(true);
+                        stoppedProcs.clear();
                     }
                     for(size_t i = 0; i < applicationNames.size(); ++i)
                     {
-                        if(process.name == applicationNames[i] && process.name != "" && wid != 0 && process.pid > 0) 
+                        if(process.getName() == applicationNames[i] &&  wid != 0 && process.getPid() > 0 && process.getName() != "") 
                         {
-                            kill(process.pid, SIGCONT);
-                            stoppedPids.remove(process.pid);
-                            std::cout<<"Resumeing wid: "+std::to_string(wid)+" pid: "+std::to_string(process.pid)+" name: "+process.name<<'\n';
+                            process.resume(true);
+                            stoppedProcs.remove(process);
+                            std::cout<<"Resumeing wid: "+std::to_string(wid)+" pid: "+std::to_string(process.getPid())+" name: "+process.getName()<<'\n';
                         }
-                        else if(prevProcess.name == applicationNames[i] && 
+                        else if(prevProcess.getName() == applicationNames[i] && 
                                 prevWindow != 0 && 
-                                prevProcess.name != "" && 
-                                prevProcess.pid > 0) 
+                                prevProcess.getName() != "" && 
+                                prevProcess.getPid() > 0) 
                         {
                             sleep(5); //give the process some time to close its other windows
                             bool hasTopLevelWindow = false;
                             std::vector<Window> tlWindows = xinstance.getTopLevelWindows();
                             for(auto& window : tlWindows) 
                             {
-                                if(xinstance.getPid(window) == prevProcess.pid) hasTopLevelWindow = true;
+                                if(xinstance.getPid(window) == prevProcess.getPid()) hasTopLevelWindow = true;
                             }
                             if(hasTopLevelWindow)
                             {
-                                kill(prevProcess.pid, SIGSTOP);
-                                std::cout<<"Stoping wid: "+std::to_string(prevWindow)+" pid: "+std::to_string(prevProcess.pid)+" name: "+prevProcess.name<<'\n';
-                                stoppedPids.push_back(prevProcess.pid);
+                                prevProcess.stop(true);
+                                std::cout<<"Stoping wid: "+std::to_string(prevWindow)+" pid: "+std::to_string(prevProcess.getPid())+" name: "+prevProcess.getName()<<'\n';
+                                stoppedProcs.push_back(prevProcess);
                             }
-                            else  std::cout<<"not Stoping wid: "+std::to_string(prevWindow)+" pid: "+std::to_string(prevProcess.pid)+" name: "+prevProcess.name<<'\n';
+                            else  std::cout<<"not Stoping wid: "+std::to_string(prevWindow)+" pid: "+std::to_string(prevProcess.getPid())+" name: "+prevProcess.getName()<<'\n';
                         }
                     }
                 }
@@ -179,10 +216,7 @@ int main(int argc, char* argv[])
             }
         }
     }
-    for(auto& pid : stoppedPids) 
-    {
-        kill(pid, SIGCONT);
-        std::cout<<"Resumeing pid: "+std::to_string(pid)<<'\n';
-    }
+    for(auto& process : stoppedProcs) process.resume(true);
+    std::filesystem::remove(confDir+"pidfile");
     return 0;
 }
