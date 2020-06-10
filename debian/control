@@ -6,7 +6,7 @@ Build-Depends:
  debhelper,
  cmake,
  libx11-dev,
-Standards-Version: 1.0
+Standards-Version: 1.0.1
 
 Package: sigstoped
 Architecture: any

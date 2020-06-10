@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
     Config config;
     argp_parse(&argp, argc, argv, 0, 0, &config);
     
-    if(config->ignoreClientMachine)
+    if(config.ignoreClientMachine)
     {
         std::cout<<"WARNING: Ignoring WM_CLIENT_MACHINE is dangerous and may cause sigstoped to stop random pids if remote windows are present"<<std::endl;
         XInstance::ignoreClientMachine = true;
@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
     std::string confDir = getConfdir();
     if(confDir.size() == 0) return 1;
     
-    createPidFile(confDir+"pidfile");
+    if(!createPidFile(confDir+"pidfile")) return 1;
     
     std::vector<std::string> applicationNames = getApplicationlist(confDir+"blacklist");
     

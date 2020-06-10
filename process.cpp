@@ -68,18 +68,21 @@ bool Process::getStoped()
 std::vector<std::string> Process::openStatus()
 {
     std::fstream statusFile;
-    statusFile.open(std::string("/proc/") + std::to_string(pid_)+ "/status", std::fstream::in);
     std::vector<std::string> lines;
-    if(statusFile.is_open())
+    if(pid_ > 0)
     {
-        std::string statusString((std::istreambuf_iterator<char>(statusFile)),
-        std::istreambuf_iterator<char>());
-        lines = split(statusString);
-        statusFile.close();
-    }
-    else
-    {
-        std::cout<<"cant open "<<"/proc/" + std::to_string(pid_)+ "/status"<<std::endl;
+        statusFile.open(std::string("/proc/") + std::to_string(pid_)+ "/status", std::fstream::in);
+        if(statusFile.is_open())
+        {
+            std::string statusString((std::istreambuf_iterator<char>(statusFile)),
+            std::istreambuf_iterator<char>());
+            lines = split(statusString);
+            statusFile.close();
+        }
+        else
+        {
+            std::cout<<"cant open "<<"/proc/" + std::to_string(pid_)+ "/status"<<std::endl;
+        }
     }
     return lines;
 }

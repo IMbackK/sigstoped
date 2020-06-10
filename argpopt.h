@@ -25,7 +25,7 @@ struct Config
     bool ignoreClientMachine = false;
 };
 
-const char *argp_program_version = "1.0";
+const char *argp_program_version = "1.0.1";
 const char *argp_program_bug_address = "<carl@uvos.xyz>";
 static char doc[] = "Deamon that stops programms via SIGSTOP when their X11 windows lose focus.";
 static char args_doc[] = "";
@@ -42,7 +42,7 @@ error_t parse_opt (int key, char *arg, struct argp_state *state)
     Config* config = reinterpret_cast<Config*>(state->input);
     switch (key)
     {
-        case 'v':
+        case 'i':
         config->ignoreClientMachine = true;
         break;
         default:
