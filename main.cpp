@@ -1,3 +1,22 @@
+/**
+ * Sigstoped
+ * Copyright (C) 2020 Carl Klemm
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 3 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301, USA.
+ */
+
 #define __USE_POSIX
 #include <iostream>
 #include <cstdlib>
@@ -20,6 +39,7 @@
 #include "process.h"
 #include "split.h"
 #include "debug.h"
+#include "argpopt.h"
 
 Window intraCommesWindow;
 XInstance xinstance;
@@ -118,7 +138,15 @@ bool createPidFile(const std::string& fileName)
 
 int main(int argc, char* argv[])
 {
- 
+    Config config;
+    argp_parse(&argp, argc, argv, 0, 0, &config);
+    
+    if(config->ignoreClientMachine)
+    {
+        std::cout<<"WARNING: Ignoring WM_CLIENT_MACHINE is dangerous and may cause sigstoped to stop random pids if remote windows are present"<<std::endl;
+        XInstance::ignoreClientMachine = true;
+    }
+    
     std::string confDir = getConfdir();
     if(confDir.size() == 0) return 1;
     

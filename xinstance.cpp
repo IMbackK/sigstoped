@@ -1,3 +1,22 @@
+/**
+ * Sigstoped
+ * Copyright (C) 2020 Carl Klemm
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 3 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA  02110-1301, USA.
+ */
+
 #include "xinstance.h"
 #include <X11/Xutil.h>
 #include <iostream>
@@ -106,7 +125,8 @@ void XInstance::flush()
 pid_t XInstance::getPid(Window wid)
 {
     XTextProperty xWidHostNameTextProperty;
-    bool ret = XGetTextProperty(display, wid, &xWidHostNameTextProperty, atoms.wmClientMachine); 
+    bool ret;
+    ret = XGetTextProperty(display, wid, &xWidHostNameTextProperty, atoms.wmClientMachine); 
     if (!ret) 
     {
         char errorString[1024];
@@ -131,7 +151,7 @@ pid_t XInstance::getPid(Window wid)
         return -1;
     }
     pid_t pid = -1;
-    if(strcmp(hostName, xWidHostNameStringList[0]) == 0)
+    if(strcmp(hostName, xWidHostNameStringList[0]) == 0 || ignoreClientMachine)
     {
         unsigned char* data = nullptr;
         int format;
