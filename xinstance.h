@@ -34,6 +34,7 @@ class XInstance
 
 public:
     
+    inline static XErrorHandler defaultHandler;
     static constexpr unsigned long MAX_BYTES = 1048576;
     
     inline static bool ignoreClientMachine = false;
@@ -46,6 +47,7 @@ private:
     
     unsigned long readProparty(Window wid, Atom atom, unsigned char** prop, int* format);
     Atom getAtom(const std::string& atomName);
+    static int ignoreErrorHandler(Display* display, XErrorEvent* xerror);
     
 public:
     
