@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
     std::string confDir = getConfdir();
     if(confDir.size() == 0) return 1;
     
-    if(!createPidFile(confDir+"pidfile"));
+    if(!createPidFile(confDir+"pidfile")) return 1;
     
     std::vector<std::string> applicationNames = getApplicationlist(confDir+"blacklist");
     
