@@ -127,6 +127,18 @@ std::string Process::getName()
     return name_;
 }
 
+std::vector<Process> Process::byName(const std::string& name)
+{
+    std::vector<pid_t> procs = getAllProcessPids();
+    std::vector<Process> retProcs;
+    for(const auto & pid : procs )
+    {
+        Process proc(pid);
+        if(name == proc.getName()) retProcs.push_back(proc);
+    }
+    return retProcs;
+}
+
 pid_t Process::convertPid(const std::string& pid)
 {
     pid_t ret;

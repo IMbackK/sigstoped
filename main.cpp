@@ -116,7 +116,17 @@ bool createPidFile(const std::string& fileName)
     if(std::filesystem::exists(fileName))
     {
         std::cerr<<fileName<<" pid file exsists, only one instance may run at once\n";
-        return false;
+        std::string sigstopedName = Process(getpid()).getName();
+        if(Process::byName(sigstopedName).size() > 1) return false;
+        else
+        {
+            std::cerr<<"Only one "
+                     <<sigstopedName
+                     <<" process exists, either sigstoped died or you have severl diferently named binarys\n";
+                     
+            std::filesystem::remove(fileName);
+            return createPidFile(fileName);
+        }
     }
     else
     {
@@ -150,7 +160,7 @@ int main(int argc, char* argv[])
     std::string confDir = getConfdir();
     if(confDir.size() == 0) return 1;
     
-    if(!createPidFile(confDir+"pidfile")) return 1;
+    if(!createPidFile(confDir+"pidfile"));
     
     std::vector<std::string> applicationNames = getApplicationlist(confDir+"blacklist");
     
@@ -185,6 +195,7 @@ int main(int argc, char* argv[])
     
     signal(SIGINT, sigTerm);
     signal(SIGTERM, sigTerm);
+    signal(SIGHUP, sigTerm);
     signal(SIGUSR1, sigUser1);
     
     while(!stop)

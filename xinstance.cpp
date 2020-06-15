@@ -132,9 +132,9 @@ pid_t XInstance::getPid(Window wid)
         char errorString[1024];
         XGetErrorText(display, ret, errorString, 1024);
         debug("XGetWMClientMachine failed! " + std::string(errorString));
-        return -1;
+        if(!ignoreClientMachine) return -1;
     }
-    char** xWidHostNameStringList;
+    char** xWidHostNameStringList = nullptr;
     int nStrings;
     ret = XTextPropertyToStringList(&xWidHostNameTextProperty, &xWidHostNameStringList, &nStrings);
     if (!ret || nStrings == 0) 
@@ -142,16 +142,16 @@ pid_t XInstance::getPid(Window wid)
         char errorString[1024];
         XGetErrorText(display, ret, errorString, 1024);
         debug("XTextPropertyToStringList failed! " + std::string(errorString));
-        return -1;
+        if(!ignoreClientMachine) return -1;
     }
     char hostName[HOST_NAME_MAX+1]={0};
     if(gethostname(hostName, HOST_NAME_MAX) != 0)
     {
         debug("Can't get host name");
-        return -1;
+        if(!ignoreClientMachine) return -1;
     }
     pid_t pid = -1;
-    if(strcmp(hostName, xWidHostNameStringList[0]) == 0 || ignoreClientMachine)
+    if(ignoreClientMachine || strcmp(hostName, xWidHostNameStringList[0]) == 0 )
     {
         unsigned char* data = nullptr;
         int format;
@@ -164,7 +164,7 @@ pid_t XInstance::getPid(Window wid)
     {
         debug("Window "+std::to_string(wid)+" is a remote window");
     }
-    XFreeStringList(xWidHostNameStringList);
+    if(xWidHostNameStringList) XFreeStringList(xWidHostNameStringList);
     return pid;
 }
 

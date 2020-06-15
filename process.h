@@ -32,7 +32,7 @@ private:
     
 private:
     std::vector<std::string> openStatus();
-    std::vector<pid_t> getAllProcessPids();
+    static std::vector<pid_t> getAllProcessPids();
     static pid_t convertPid(const std::string& pid);
     
 public:
@@ -47,6 +47,7 @@ public:
     pid_t getPPid();
     Process getParent(){return Process(getPPid());}
     std::vector<Process> getChildren();
+    static std::vector<Process> byName(const std::string& name);
     Process(){}
     Process(pid_t pidIn);
 };
