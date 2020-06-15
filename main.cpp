@@ -22,7 +22,6 @@
 #include <cstdlib>
 #include <algorithm>
 #include <X11/Xlib.h>
-#include <X11/extensions/dpms.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <limits.h>
