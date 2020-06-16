@@ -12,6 +12,6 @@ Package: sigstoped
 Architecture: any
 Multi-arch: same
 Depends:
- libx11,
+ libx11-6,
 Description: A deamon that stops programms via SIGSTOP when their X11 windows lose focus.
 

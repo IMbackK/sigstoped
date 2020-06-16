@@ -107,13 +107,13 @@ std::vector<Window> XInstance::getTopLevelWindows()
     Window* windows = nullptr;
     unsigned int nwindows;
     XQueryTree(display, RootWindow(display, screen), &root_return, &parent_return, &windows, &nwindows);
-    
     std::vector<Window> out;
     out.reserve(nwindows);
-    for(unsigned int i; i < nwindows; ++i)
+    for(unsigned int i = 0; i < nwindows; ++i)
     {
         out.push_back(windows[i]);
     }
+    if(windows != nullptr) XFree(windows);
     return out;
 }
 
@@ -124,6 +124,7 @@ void XInstance::flush()
 
 pid_t XInstance::getPid(Window wid)
 {
+    defaultHandler = XSetErrorHandler(ignoreErrorHandler);
     XTextProperty xWidHostNameTextProperty;
     bool ret;
     ret = XGetTextProperty(display, wid, &xWidHostNameTextProperty, atoms.wmClientMachine); 
@@ -132,7 +133,11 @@ pid_t XInstance::getPid(Window wid)
         char errorString[1024];
         XGetErrorText(display, ret, errorString, 1024);
         debug("XGetWMClientMachine failed! " + std::string(errorString));
-        if(!ignoreClientMachine) return -1;
+        if(!ignoreClientMachine) 
+        {
+            XSetErrorHandler(defaultHandler);
+            return -1;
+        }
     }
     char** xWidHostNameStringList = nullptr;
     int nStrings;
@@ -142,13 +147,21 @@ pid_t XInstance::getPid(Window wid)
         char errorString[1024];
         XGetErrorText(display, ret, errorString, 1024);
         debug("XTextPropertyToStringList failed! " + std::string(errorString));
-        if(!ignoreClientMachine) return -1;
+        if(!ignoreClientMachine) 
+        {
+            XSetErrorHandler(defaultHandler);
+            return -1;
+        }
     }
     char hostName[HOST_NAME_MAX+1]={0};
     if(gethostname(hostName, HOST_NAME_MAX) != 0)
     {
         debug("Can't get host name");
-        if(!ignoreClientMachine) return -1;
+        if(!ignoreClientMachine) 
+        {
+            XSetErrorHandler(defaultHandler);
+            return -1;
+        }
     }
     pid_t pid = -1;
     if(ignoreClientMachine || strcmp(hostName, xWidHostNameStringList[0]) == 0 )
@@ -165,7 +178,15 @@ pid_t XInstance::getPid(Window wid)
         debug("Window "+std::to_string(wid)+" is a remote window");
     }
     if(xWidHostNameStringList) XFreeStringList(xWidHostNameStringList);
+    XSetErrorHandler(defaultHandler);
     return pid;
+}
+
+int XInstance::ignoreErrorHandler(Display* display, XErrorEvent* xerror)
+{
+    std::cerr<<"Ignoring: error code"<<xerror->error_code<<" request code "<<xerror->request_code<<'\n'
+             <<"this error most likely occured because of a bug in your WM\n";
+    return 0;
 }
 
  XInstance::~XInstance()
