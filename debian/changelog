@@ -1,3 +1,7 @@
+sigstoped (1.0.4) unstable; urgency=medium
+  Fix memory leak in XInstance::getTopLevelWindows()
+ -- Uvos <carl@uvos.xyz>  Mon, 16 Jun 2020 09:47:00 +0100
+
 sigstoped (1.0.3) unstable; urgency=medium
   Ignore BadWindow errors caused by faulty __NET_ACTIVE_WINDOW events
  -- Uvos <carl@uvos.xyz>  Mon, 15 Jun 2020 23:47:00 +0100

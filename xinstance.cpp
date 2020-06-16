@@ -107,13 +107,13 @@ std::vector<Window> XInstance::getTopLevelWindows()
     Window* windows = nullptr;
     unsigned int nwindows;
     XQueryTree(display, RootWindow(display, screen), &root_return, &parent_return, &windows, &nwindows);
-    
     std::vector<Window> out;
     out.reserve(nwindows);
-    for(unsigned int i; i < nwindows; ++i)
+    for(unsigned int i = 0; i < nwindows; ++i)
     {
         out.push_back(windows[i]);
     }
+    XFree(windows);
     return out;
 }
 
