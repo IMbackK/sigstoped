@@ -25,7 +25,7 @@ struct Config
     bool ignoreClientMachine = false;
 };
 
-const char *argp_program_version = "1.0.3";
+const char *argp_program_version = "1.0.4";
 const char *argp_program_bug_address = "<carl@uvos.xyz>";
 static char doc[] = "Deamon that stops programms via SIGSTOP when their X11 windows lose focus.";
 static char args_doc[] = "";
