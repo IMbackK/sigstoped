@@ -1,8 +1,8 @@
 sigstoped (1.0.5) unstable; urgency=medium
-  Configureable timout for applications to close their windows.
-  Fix 5sec stall when switching from an application to be stopped to an application that was stopped before.
-  Make Xinstance thread safe
- -- Uvos <carl@uvos.xyz>  Wed, 01 Jul Jun 2020 09:47:00 +0100
+    Configureable timout for applications to close their windows.
+    Fix 5sec stall when switching from an application to be stopped to an application that was stopped before.
+    Make Xinstance thread safe
+-- Uvos <carl@uvos.xyz>  Mon, 16 Jun 2020 09:47:00 +0100
 
 sigstoped (1.0.4) unstable; urgency=medium
   Fix memory leak in XInstance::getTopLevelWindows()
