@@ -39,23 +39,27 @@
 #include "split.h"
 #include "debug.h"
 #include "argpopt.h"
+#include "CppTimer.h"
 
 Window intraCommesWindow;
-XInstance xinstance;
-volatile bool stop = false;
 volatile bool configStale = false;
+XInstance xinstance;
 
 constexpr char configPrefix[] = "/.config/sigstoped/";
+constexpr char STOP_EVENT = 65;
+constexpr char PROC_STOP_EVENT = 1;
 
 void sigTerm(int dummy) 
 {
-    stop = true;
-    XClientMessageEvent dummyEvent;
-    memset(&dummyEvent, 0, sizeof(XClientMessageEvent));
-    dummyEvent.type = ClientMessage;
-    dummyEvent.window = intraCommesWindow;
-    dummyEvent.format = 32;
-    XSendEvent(xinstance.display, intraCommesWindow, 0, 0, (XEvent*)&dummyEvent);
+    XClientMessageEvent event;
+    memset(&event, 0, sizeof(XClientMessageEvent));
+    event.type = ClientMessage;
+    event.window = intraCommesWindow;
+    event.format = 8;
+    event.data.b[0] = STOP_EVENT;
+    XLockDisplay(xinstance.display);
+    XSendEvent(xinstance.display, intraCommesWindow, 0, 0, (XEvent*)&event);
+    XUnlockDisplay(xinstance.display);
     xinstance.flush();
 }
 
@@ -121,7 +125,7 @@ bool createPidFile(const std::string& fileName)
         {
             std::cerr<<"Only one "
                      <<sigstopedName
-                     <<" process exists, either sigstoped died or you have severl diferently named binarys\n";
+                     <<" process exists, either sigstoped died or you have several diferently named binarys\n";
                      
             std::filesystem::remove(fileName);
             return createPidFile(fileName);
@@ -145,11 +149,56 @@ bool createPidFile(const std::string& fileName)
     }
 }
 
+
+void sendEventProcStop()
+{
+    XClientMessageEvent event;
+    memset(&event, 0, sizeof(XClientMessageEvent));
+    event.type = ClientMessage;
+    event.window = intraCommesWindow;
+    event.format = 8;
+    event.data.b[0] = PROC_STOP_EVENT;
+    XLockDisplay(xinstance.display);
+    XSendEvent(xinstance.display, intraCommesWindow, 0, 0, (XEvent*)&event);
+    XUnlockDisplay(xinstance.display);
+    xinstance.flush();
+}
+
+bool stopProcess(Process process, XInstance* xinstance)
+{
+    bool hasTopLevelWindow = false;
+    std::vector<Window> tlWindows = xinstance->getTopLevelWindows();
+    for(auto& window : tlWindows) 
+    {
+        if(xinstance->getPid(window) == process.getPid()) hasTopLevelWindow = true;
+    }
+    if(hasTopLevelWindow)
+    {
+        process.stop(true);
+        std::cout<<"Stoping pid: "+std::to_string(process.getPid())+" name: "+process.getName()<<'\n';
+        return true;
+    }
+    else  
+    {
+        std::cout<<"not Stoping pid: "+std::to_string(process.getPid())+" name: "+process.getName()<<'\n';
+        return false;
+    }
+}
+
 int main(int argc, char* argv[])
 {
+    char* xDisplayName = std::getenv( "DISPLAY" );
+    if(xDisplayName == nullptr) 
+    {
+        std::cerr<<"DISPLAY enviroment variable must be set.\n";
+        return 1;
+    }
+
+    if(!xinstance.open(xDisplayName)) exit(1);
+    
     Config config;
     argp_parse(&argp, argc, argv, 0, 0, &config);
-    
+
     if(config.ignoreClientMachine)
     {
         std::cout<<"WARNING: Ignoring WM_CLIENT_MACHINE is dangerous and may cause sigstoped to stop random pids if remote windows are present"<<std::endl;
@@ -171,16 +220,7 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-    char* xDisplayName = std::getenv( "DISPLAY" );
-    if(xDisplayName == nullptr) 
-    {
-        std::cerr<<"DISPLAY enviroment variable must be set.\n";
-        return 1;
-    }
-    
     std::list<Process> stoppedProcs;
-    
-    if(!xinstance.open(xDisplayName)) exit(1);
     
     intraCommesWindow = XCreateSimpleWindow(xinstance.display, 
                                             RootWindow(xinstance.display, xinstance.screen),
@@ -190,6 +230,7 @@ int main(int argc, char* argv[])
     
     XEvent event;
     Process prevProcess;
+    Process qeuedToStop;
     Window prevWindow = 0;
     
     signal(SIGINT, sigTerm);
@@ -197,11 +238,13 @@ int main(int argc, char* argv[])
     signal(SIGHUP, sigTerm);
     signal(SIGUSR1, sigUser1);
     
-    while(!stop)
+    CppTimer timer;
+    
+    while(true)
     {
         XNextEvent(xinstance.display, &event);
         if (event.type == DestroyNotify) break;
-        if (event.type == PropertyNotify && event.xproperty.atom == xinstance.atoms.netActiveWindow)
+        else if (event.type == PropertyNotify && event.xproperty.atom == xinstance.atoms.netActiveWindow)
         {
             Window wid = xinstance.getActiveWindow();
             if(wid != 0 && wid != prevWindow)
@@ -223,6 +266,12 @@ int main(int argc, char* argv[])
                     {
                         if(process.getName() == applicationNames[i] &&  wid != 0 && process.getPid() > 0 && process.getName() != "") 
                         {
+                            if(process == qeuedToStop)
+                            {
+                                std::cout<<"Canceling stop of wid: "+std::to_string(wid)+" pid: "+std::to_string(process.getPid())+" name: "+process.getName()<<'\n';
+                                timer.stop();
+                                qeuedToStop = Process();
+                            }
                             process.resume(true);
                             stoppedProcs.remove(process);
                             std::cout<<"Resumeing wid: "+std::to_string(wid)+" pid: "+std::to_string(process.getPid())+" name: "+process.getName()<<'\n';
@@ -232,25 +281,26 @@ int main(int argc, char* argv[])
                                 prevProcess.getName() != "" && 
                                 prevProcess.getPid() > 0) 
                         {
-                            sleep(5); //give the process some time to close its other windows
-                            bool hasTopLevelWindow = false;
-                            std::vector<Window> tlWindows = xinstance.getTopLevelWindows();
-                            for(auto& window : tlWindows) 
-                            {
-                                if(xinstance.getPid(window) == prevProcess.getPid()) hasTopLevelWindow = true;
-                            }
-                            if(hasTopLevelWindow)
-                            {
-                                prevProcess.stop(true);
-                                std::cout<<"Stoping wid: "+std::to_string(prevWindow)+" pid: "+std::to_string(prevProcess.getPid())+" name: "+prevProcess.getName()<<'\n';
-                                stoppedProcs.push_back(prevProcess);
-                            }
-                            else  std::cout<<"not Stoping wid: "+std::to_string(prevWindow)+" pid: "+std::to_string(prevProcess.getPid())+" name: "+prevProcess.getName()<<'\n';
+                            timer.block();
+                            std::cout<<"Will stop pid: "<<prevProcess.getPid()<<" name: "<<prevProcess.getName()<<'\n';
+                            qeuedToStop = prevProcess;
+                            timer.start(config.timeoutSecs*1000*CppTimer::MS_TO_NS, sendEventProcStop, CppTimer::ONESHOT);
+                            stoppedProcs.push_back(prevProcess);
                         }
                     }
                 }
                 prevProcess = process;
                 prevWindow = wid;
+            }
+        }
+        else if (event.type == ClientMessage && ((XClientMessageEvent*)&event)->window == intraCommesWindow)
+        {
+            XClientMessageEvent* clientEvent = (XClientMessageEvent*)&event;
+            if (clientEvent->data.b[0] == STOP_EVENT) break;
+            if (clientEvent->data.b[0] == PROC_STOP_EVENT)
+            {
+               stopProcess(qeuedToStop, &xinstance);
+               qeuedToStop = Process();
             }
         }
     }

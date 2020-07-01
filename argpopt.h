@@ -23,6 +23,7 @@
 struct Config
 {
     bool ignoreClientMachine = false;
+    int  timeoutSecs = 10;
 };
 
 const char *argp_program_version = "1.0.4";
@@ -33,6 +34,7 @@ static char args_doc[] = "";
 static struct argp_option options[] = 
 {
   {"ignore-client-machine",  'i', 0,      0,  "Also stop programs associated with windows that fail to set WM_CLIENT_MACHINE" },
+  {"timout", 't', "seconds",      0,  "Timeout to give program to close its last window before stoping it" },
   { 0 }
 };
 
@@ -44,6 +46,9 @@ error_t parse_opt (int key, char *arg, struct argp_state *state)
     {
         case 'i':
         config->ignoreClientMachine = true;
+        break;
+        case 't':
+        config->timeoutSecs = atol(arg);
         break;
         default:
         return ARGP_ERR_UNKNOWN;

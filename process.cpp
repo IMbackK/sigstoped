@@ -42,11 +42,14 @@ pid_t Process::getPid()
 
 void Process::stop(bool children)
 {
-    kill(pid_, SIGSTOP);
-    if(children)
+    if(pid_ > 0)
     {
-        std::vector<Process> children = getChildren();
-        for(auto& child : children) child.stop(true);
+        kill(pid_, SIGSTOP);
+        if(children)
+        {
+            std::vector<Process> children = getChildren();
+            for(auto& child : children) child.stop(true);
+        }
     }
 }
 

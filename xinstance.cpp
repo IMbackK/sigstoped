@@ -30,7 +30,8 @@ unsigned long XInstance::readProparty(Window wid, Atom atom, unsigned char** pro
     Atom returnedAtom;
     unsigned long nitems;
     unsigned long bytes_after;
-        
+    
+    XLockDisplay(display);
     int ret = XGetWindowProperty(
         display, 
         wid, 
@@ -42,6 +43,7 @@ unsigned long XInstance::readProparty(Window wid, Atom atom, unsigned char** pro
         &nitems, 
         &bytes_after,
         prop);
+    XUnlockDisplay(display);
     if (ret != Success) 
     {
         std::cerr<<"XGetWindowProperty failed!\n";
@@ -52,11 +54,12 @@ unsigned long XInstance::readProparty(Window wid, Atom atom, unsigned char** pro
     
 Atom XInstance::getAtom(const std::string& atomName)
 {
-    return XInternAtom(display, atomName.c_str(), true);
+    return XInternAtom(display, atomName.c_str(), true);;
 }
     
 bool XInstance::open(const std::string& xDisplayName)
 {
+    XInitThreads();
     display = XOpenDisplay(xDisplayName.c_str());
     if (display == nullptr) 
     {
@@ -96,7 +99,9 @@ Window XInstance::getActiveWindow()
     unsigned long length = readProparty(RootWindow(display, screen), atoms.netActiveWindow, &data, &format);
     Window wid = 0;
     if(format == 32 && length == 4)  wid = *reinterpret_cast<Window*>(data);
+    XLockDisplay(display);
     XFree(data);
+    XUnlockDisplay(display);
     return wid;
 }
 
@@ -106,20 +111,26 @@ std::vector<Window> XInstance::getTopLevelWindows()
     Window parent_return;
     Window* windows = nullptr;
     unsigned int nwindows;
+    XLockDisplay(display);
     XQueryTree(display, RootWindow(display, screen), &root_return, &parent_return, &windows, &nwindows);
+    XUnlockDisplay(display);
     std::vector<Window> out;
     out.reserve(nwindows);
     for(unsigned int i = 0; i < nwindows; ++i)
     {
         out.push_back(windows[i]);
     }
-    if(windows != nullptr) XFree(windows);
+    XLockDisplay(display);
+    if(windows != nullptr) XFree(windows); 
+    XUnlockDisplay(display);
     return out;
 }
 
 void XInstance::flush()
 {
-     XFlush(display);
+    XLockDisplay(display);
+    XFlush(display);
+    XUnlockDisplay(display);
 }
 
 pid_t XInstance::getPid(Window wid)
@@ -127,7 +138,9 @@ pid_t XInstance::getPid(Window wid)
     defaultHandler = XSetErrorHandler(ignoreErrorHandler);
     XTextProperty xWidHostNameTextProperty;
     bool ret;
-    ret = XGetTextProperty(display, wid, &xWidHostNameTextProperty, atoms.wmClientMachine); 
+    XLockDisplay(display);
+    ret = XGetTextProperty(display, wid, &xWidHostNameTextProperty, atoms.wmClientMachine);
+    XUnlockDisplay(display);
     if (!ret) 
     {
         char errorString[1024];
@@ -191,5 +204,7 @@ int XInstance::ignoreErrorHandler(Display* display, XErrorEvent* xerror)
 
  XInstance::~XInstance()
  {
+     XLockDisplay(display);
      if(display) XCloseDisplay(display);
+     XUnlockDisplay(display);
  }
