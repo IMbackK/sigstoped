@@ -44,7 +44,7 @@ public:
 	 * the timer fires once after the specified time in
 	 * nanoseconds.
 	 **/
-	virtual void start(long nanosecs, std::function<void()> callbackIn, int type = PERIODIC); 
+	virtual void start(long secs, long nanosecs, std::function<void()> callbackIn, int type = PERIODIC); 
 
 	/**
 	* Stops the timer by disarming it. It can be re-started

@@ -284,7 +284,7 @@ int main(int argc, char* argv[])
                             timer.block();
                             std::cout<<"Will stop pid: "<<prevProcess.getPid()<<" name: "<<prevProcess.getName()<<'\n';
                             qeuedToStop = prevProcess;
-                            timer.start(config.timeoutSecs*1000*CppTimer::MS_TO_NS, sendEventProcStop, CppTimer::ONESHOT);
+                            timer.start(config.timeoutSecs, 0, sendEventProcStop, CppTimer::ONESHOT);
                             stoppedProcs.push_back(prevProcess);
                         }
                     }
