@@ -26,7 +26,7 @@ struct Config
     int  timeoutSecs = 10;
 };
 
-const char *argp_program_version = "1.0.5";
+const char *argp_program_version = "1.0.6";
 const char *argp_program_bug_address = "<carl@uvos.xyz>";
 static char doc[] = "Deamon that stops programms via SIGSTOP when their X11 windows lose focus.";
 static char args_doc[] = "";
